@@ -1,14 +1,5 @@
 """
 career.py — Career Quality Scorer
-
-WHAT THIS DOES (plain English):
-The JD explicitly says certain career backgrounds are disqualifying.
-This module reads a candidate's career history and answers:
-  1. Have they worked at product companies or only consulting farms?
-  2. Is their domain right (NLP/IR/retrieval) or wrong (vision/speech/robotics)?
-  3. Have they actually shipped production systems?
-  4. Are they a title-chaser (switching every 1.5 years)?
-  5. Do they have the right experience level (5-9 years sweet spot)?
 """
 
 CONSULTING_FIRMS = {
@@ -37,6 +28,12 @@ RIGHT_DOMAIN_SKILLS = {
     "question answering", "named entity recognition", "ner"
 }
 
+WRONG_DOMAIN_TITLES = {
+    "computer vision", "cv engineer", "vision engineer",
+    "speech engineer", "speech scientist", "robotics engineer",
+    "autonomous", "self-driving"
+}
+
 EXPERIENCE_MIN = 4.0
 EXPERIENCE_SWEET_MIN = 5.0
 EXPERIENCE_SWEET_MAX = 9.0
@@ -54,6 +51,7 @@ def score_career(candidate: dict) -> dict:
     skills = candidate.get("skills", [])
 
     skill_names_lower = {s["name"].lower() for s in skills}
+    current_title_lower = profile.get("current_title", "").lower()
 
     if career_history:
         all_companies = [h["company"] for h in career_history]
@@ -71,7 +69,13 @@ def score_career(candidate: dict) -> dict:
     right_domain_count = sum(1 for s in skill_names_lower
                              if any(r in s for r in RIGHT_DOMAIN_SKILLS))
 
-    wrong_domain_only = wrong_domain_count > 2 and right_domain_count == 0
+    # Also check title — CV Engineer with no NLP skills = wrong domain
+    title_is_wrong_domain = any(w in current_title_lower for w in WRONG_DOMAIN_TITLES)
+
+    wrong_domain_only = (
+        (wrong_domain_count > 2 and right_domain_count == 0) or
+        (title_is_wrong_domain and right_domain_count == 0)
+    )
 
     production_keywords = ["production", "shipped", "deployed", "launched", "serving",
                           "real users", "at scale", "inference", "A/B test", "live"]
