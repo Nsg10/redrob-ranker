@@ -1,0 +1,9 @@
+venv/
+cache/
+candidates.jsonl
+sample_candidates.json
+*.pkl
+*.npy
+__pycache__/
+*.pyc
+.DS_Store
