@@ -2,7 +2,7 @@
 precompute.py — One-time Pre-computation Step
 
 Run this ONCE before ranking. It:
-1. Embeds the JD into a vector
+1. Embeds the JD into 3 section vectors (must-have, nice-to-have, anti-patterns)
 2. Embeds all 100K candidate narratives
 3. Pre-computes career/skills/behavioral scores
 4. Saves everything to ./cache/
@@ -25,15 +25,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from score.career import score_career
 from score.skills import score_skills
 from score.behavioral import score_behavioral
+from score.semantic import get_jd_section_embeddings
 from utils.honeypot import check_honeypot
 
 
 def build_candidate_text(candidate: dict) -> str:
-    """
-    Build a rich text narrative for embedding.
-    We weight career descriptions heavily — they describe what
-    the candidate actually DID, not just their job title.
-    """
     profile = candidate.get("profile", {})
     career_history = candidate.get("career_history", [])
     skills = candidate.get("skills", [])
@@ -78,26 +74,15 @@ def main():
     os.makedirs(args.out, exist_ok=True)
 
     print("Loading sentence transformer model (all-MiniLM-L6-v2)...")
-    print("  First run downloads ~80MB. Cached after that.")
     from sentence_transformers import SentenceTransformer
     model = SentenceTransformer("all-MiniLM-L6-v2")
     print("  Model loaded")
 
-    print("\nEmbedding job description...")
-    jd_text = """
-    Senior AI Engineer role requiring: production experience with embeddings-based retrieval systems
-    (sentence-transformers, BGE, E5, OpenAI embeddings), vector databases (Pinecone, Weaviate, Qdrant,
-    Milvus, FAISS, Elasticsearch), hybrid search infrastructure. Strong Python. Evaluation frameworks
-    for ranking systems (NDCG, MRR, MAP, A/B testing). Experience at product companies (not consulting).
-    5-9 years experience. Shipper mindset over researcher mindset. NLP and information retrieval background.
-    LLM integration experience (fine-tuning, LoRA, RAG). Learning-to-rank models (XGBoost, neural LTR).
-    Located in Pune, Noida, Hyderabad, Mumbai, Delhi NCR or willing to relocate.
-    NOT: consulting-only career, computer vision/speech/robotics only, no production deployment,
-    title-chaser, recent LLM-wrapper developer only.
-    """
-    jd_embedding = model.encode(jd_text, normalize_embeddings=True)
-    np.save(os.path.join(args.out, "jd_embedding.npy"), jd_embedding)
-    print(f"  JD embedded → shape {jd_embedding.shape}")
+    print("\nEmbedding JD sections (must-have, nice-to-have, anti-patterns)...")
+    jd_sections = get_jd_section_embeddings(model)
+    with open(os.path.join(args.out, "jd_sections.pkl"), "wb") as f:
+        pickle.dump(jd_sections, f)
+    print(f"  3 JD section embeddings saved")
 
     print(f"\nLoading candidates from {args.candidates}...")
     candidates = []
@@ -123,7 +108,7 @@ def main():
         pickle.dump(feature_cache, f)
     print(f"  Features saved for {len(feature_cache):,} candidates")
 
-    print(f"\nBuilding candidate texts and embedding {len(candidates):,} candidates...")
+    print(f"\nEmbedding {len(candidates):,} candidates...")
     print("  This takes 2-4 minutes on CPU. Go get a coffee.")
     candidate_ids = []
     candidate_texts = []

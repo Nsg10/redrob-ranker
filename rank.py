@@ -1,8 +1,12 @@
 """
-rank.py — The Main Ranker
+rank.py — The Main Ranker (v2)
+
+Now uses multi-section JD semantic scoring:
+  - Must-haves (60%) 
+  - Nice-to-haves (30%)
+  - Anti-patterns (-10%)
 
 Runs in < 5 minutes, no GPU, no network calls.
-Loads pre-computed cache and outputs top 100 candidates as CSV.
 
 HOW TO RUN:
   python rank.py --cache ./cache --candidates ./candidates.jsonl --out ./submission.csv
@@ -20,6 +24,7 @@ import numpy as np
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent))
+from score.semantic import batch_compute_semantic_scores
 from utils.reasoning import generate_reasoning
 
 WEIGHTS = {
@@ -92,11 +97,10 @@ def main():
     args = parser.parse_args()
 
     print("=" * 55)
-    print("  Redrob AI Hackathon — Intelligent Candidate Ranker")
+    print("  Redrob AI Hackathon — Intelligent Candidate Ranker v2")
     print("=" * 55)
 
     print("\n[1/5] Loading pre-computed cache...")
-    jd_embedding = np.load(os.path.join(args.cache, "jd_embedding.npy"))
     candidate_embeddings = np.load(os.path.join(args.cache, "candidate_embeddings.npy"))
 
     with open(os.path.join(args.cache, "candidate_ids.pkl"), "rb") as f:
@@ -105,12 +109,16 @@ def main():
     with open(os.path.join(args.cache, "feature_cache.pkl"), "rb") as f:
         feature_cache = pickle.load(f)
 
+    with open(os.path.join(args.cache, "jd_sections.pkl"), "rb") as f:
+        jd_sections = pickle.load(f)
+
     print(f"  Embeddings: {candidate_embeddings.shape}")
     print(f"  Features: {len(feature_cache):,} candidates")
+    print(f"  JD sections: {list(jd_sections.keys())}")
 
-    print("\n[2/5] Computing semantic similarity scores...")
-    semantic_scores = candidate_embeddings @ jd_embedding
-    print(f"  Done | Mean: {semantic_scores.mean():.3f} | Max: {semantic_scores.max():.3f}")
+    print("\n[2/5] Computing multi-section semantic scores...")
+    semantic_scores = batch_compute_semantic_scores(candidate_embeddings, jd_sections)
+    print(f"  Done | Mean: {semantic_scores.mean():.3f} | Max: {semantic_scores.max():.3f} | Min: {semantic_scores.min():.3f}")
 
     print("\n[3/5] Computing final composite scores...")
     all_scores = []
