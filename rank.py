@@ -12,6 +12,8 @@ HOW TO RUN:
   python rank.py --cache ./cache --candidates ./candidates.jsonl --out ./submission.csv
 """
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 import argparse
 import csv
 import json

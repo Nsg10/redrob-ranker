@@ -138,3 +138,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# THIS IS A PATCH — ignore, handled in main() above
