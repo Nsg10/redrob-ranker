@@ -100,6 +100,10 @@ redrob-ranker/
 
 https://redrob-ranker-5uekmfroven3nz82q4pven.streamlit.app/
 
+## Demo Video Link 
+
+https://drive.google.com/file/d/1ZJiIh3rBWbjznVrdsJ5wz3Oi_xuAAdXB/view?usp=sharing
+
 ## Results
 
 - Top candidate: Staff ML Engineer @ Yellow.ai (score: 0.9356)
